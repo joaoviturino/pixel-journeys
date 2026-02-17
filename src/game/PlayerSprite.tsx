@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Direction } from './mapData';
 import playerSpriteSheet from '@/assets/player-sprite.png';
 
@@ -9,15 +9,11 @@ interface PlayerSpriteProps {
   tileSize: number;
 }
 
-// Graal Online Classic / Zelda-style spritesheet format:
+// Graal Online Classic body spritesheet format:
 // 3 columns: left-step, standing, right-step
-// Row 0: UP
-// Row 1: LEFT
-// Row 2: DOWN
-// Row 3: RIGHT
-const FRAME_W = 32;
-const FRAME_H = 32;
+// Row 0: UP, Row 1: LEFT, Row 2: DOWN, Row 3: RIGHT
 const COLS = 3;
+const ROWS_USED = 4;
 
 const DIRECTION_ROW: Record<Direction, number> = {
   up: 0,
@@ -26,15 +22,27 @@ const DIRECTION_ROW: Record<Direction, number> = {
   right: 3,
 };
 
-// Walk cycle: standing(1) -> left-step(0) -> standing(1) -> right-step(2)
+// Walk cycle: standing -> left-step -> standing -> right-step
 const WALK_CYCLE = [1, 0, 1, 2];
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
-  const row = DIRECTION_ROW[direction];
-  const col = isMoving ? WALK_CYCLE[stepFrame % WALK_CYCLE.length] : 1; // idle = col 1 (standing)
+  const [sheetSize, setSheetSize] = useState<{ w: number; h: number } | null>(null);
 
-  const scaleX = tileSize / FRAME_W;
-  const scaleY = tileSize / FRAME_H;
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setSheetSize({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = playerSpriteSheet;
+  }, []);
+
+  if (!sheetSize) return <div style={{ width: tileSize, height: tileSize }} />;
+
+  const frameW = sheetSize.w / COLS;
+  const frameH = frameW; // Square frames typical for Graal
+
+  const row = DIRECTION_ROW[direction];
+  const col = isMoving ? WALK_CYCLE[stepFrame % WALK_CYCLE.length] : 1;
+
+  const scale = tileSize / frameW;
 
   return (
     <div
@@ -45,15 +53,17 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
         imageRendering: 'pixelated',
       }}
     >
-      <div
+      <img
+        src={playerSpriteSheet}
+        alt="player"
+        draggable={false}
         style={{
-          width: tileSize,
-          height: tileSize,
-          backgroundImage: `url(${playerSpriteSheet})`,
-          backgroundSize: `${COLS * FRAME_W * scaleX}px auto`,
-          backgroundPosition: `-${col * FRAME_W * scaleX}px -${row * FRAME_H * scaleY}px`,
-          backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
+          transform: `scale(${scale})`,
+          transformOrigin: '0 0',
+          marginLeft: -col * frameW,
+          marginTop: -row * frameH,
+          display: 'block',
         }}
       />
     </div>
