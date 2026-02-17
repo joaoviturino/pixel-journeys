@@ -9,25 +9,32 @@ interface PlayerSpriteProps {
   tileSize: number;
 }
 
-// Spritesheet layout: 4 columns x ~16 rows
-// Rows by direction (typical RPG spritesheet):
-// Row 0: down idle/walk frames
-// Row 1: left idle/walk frames  
-// Row 2: right idle/walk frames
-// Row 3: up idle/walk frames
-const SPRITE_SIZE = 32; // Each frame is ~32x32 in the sheet
-const COLS = 4;
+// Graal Online Classic / Zelda-style spritesheet format:
+// 3 columns: left-step, standing, right-step
+// Row 0: UP
+// Row 1: LEFT
+// Row 2: DOWN
+// Row 3: RIGHT
+const FRAME_W = 32;
+const FRAME_H = 32;
+const COLS = 3;
 
 const DIRECTION_ROW: Record<Direction, number> = {
-  down: 0,
+  up: 0,
   left: 1,
-  right: 2,
-  up: 3,
+  down: 2,
+  right: 3,
 };
+
+// Walk cycle: standing(1) -> left-step(0) -> standing(1) -> right-step(2)
+const WALK_CYCLE = [1, 0, 1, 2];
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
   const row = DIRECTION_ROW[direction];
-  const col = isMoving ? (stepFrame % COLS) : 0;
+  const col = isMoving ? WALK_CYCLE[stepFrame % WALK_CYCLE.length] : 1; // idle = col 1 (standing)
+
+  const scaleX = tileSize / FRAME_W;
+  const scaleY = tileSize / FRAME_H;
 
   return (
     <div
@@ -43,8 +50,8 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
           width: tileSize,
           height: tileSize,
           backgroundImage: `url(${playerSpriteSheet})`,
-          backgroundSize: `${COLS * tileSize}px auto`,
-          backgroundPosition: `-${col * tileSize}px -${row * tileSize}px`,
+          backgroundSize: `${COLS * FRAME_W * scaleX}px auto`,
+          backgroundPosition: `-${col * FRAME_W * scaleX}px -${row * FRAME_H * scaleY}px`,
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
         }}
