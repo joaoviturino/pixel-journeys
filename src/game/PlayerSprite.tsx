@@ -9,16 +9,18 @@ interface PlayerSpriteProps {
   tileSize: number;
 }
 
-const COLS = 3;
+// Layout: 4 columns x N rows
+// Col 0: Back (up), Col 1: Left, Col 2: Front (down), Col 3: Right
+// Rows = animation frames for walking
+const COLS = 4;
+const WALK_FRAMES = 4; // Use first 4 rows as walk cycle
 
-const DIRECTION_ROW: Record<Direction, number> = {
-  up: 0,
+const DIRECTION_COL: Record<Direction, number> = {
+  up: 0,    // costas
   left: 1,
-  down: 2,
+  down: 2,  // frente
   right: 3,
 };
-
-const WALK_CYCLE = [1, 0, 1, 2];
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
   const [sheetSize, setSheetSize] = useState<{ w: number; h: number } | null>(null);
@@ -34,11 +36,11 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
   const frameW = sheetSize.w / COLS;
   const frameH = frameW; // Square frames
 
-  const row = DIRECTION_ROW[direction];
-  const col = isMoving ? WALK_CYCLE[stepFrame % WALK_CYCLE.length] : 1;
+  const col = DIRECTION_COL[direction];
+  // Idle = row 0, walking cycles through rows 0-3
+  const row = isMoving ? (stepFrame % WALK_FRAMES) : 0;
 
-  // Scale entire sheet so each frame = tileSize
-  const scaledSheetW = (sheetSize.w / frameW) * tileSize; // = COLS * tileSize
+  const scaledSheetW = (sheetSize.w / frameW) * tileSize;
   const scaledSheetH = (sheetSize.h / frameH) * tileSize;
 
   return (
