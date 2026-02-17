@@ -9,11 +9,7 @@ interface PlayerSpriteProps {
   tileSize: number;
 }
 
-// Graal Online Classic body spritesheet format:
-// 3 columns: left-step, standing, right-step
-// Row 0: UP, Row 1: LEFT, Row 2: DOWN, Row 3: RIGHT
 const COLS = 3;
-const ROWS_USED = 4;
 
 const DIRECTION_ROW: Record<Direction, number> = {
   up: 0,
@@ -22,7 +18,6 @@ const DIRECTION_ROW: Record<Direction, number> = {
   right: 3,
 };
 
-// Walk cycle: standing -> left-step -> standing -> right-step
 const WALK_CYCLE = [1, 0, 1, 2];
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
@@ -37,12 +32,14 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
   if (!sheetSize) return <div style={{ width: tileSize, height: tileSize }} />;
 
   const frameW = sheetSize.w / COLS;
-  const frameH = frameW; // Square frames typical for Graal
+  const frameH = frameW; // Square frames
 
   const row = DIRECTION_ROW[direction];
   const col = isMoving ? WALK_CYCLE[stepFrame % WALK_CYCLE.length] : 1;
 
-  const scale = tileSize / frameW;
+  // Scale entire sheet so each frame = tileSize
+  const scaledSheetW = (sheetSize.w / frameW) * tileSize; // = COLS * tileSize
+  const scaledSheetH = (sheetSize.h / frameH) * tileSize;
 
   return (
     <div
@@ -51,22 +48,12 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
         height: tileSize,
         overflow: 'hidden',
         imageRendering: 'pixelated',
+        backgroundImage: `url(${playerSpriteSheet})`,
+        backgroundSize: `${scaledSheetW}px ${scaledSheetH}px`,
+        backgroundPosition: `-${col * tileSize}px -${row * tileSize}px`,
+        backgroundRepeat: 'no-repeat',
       }}
-    >
-      <img
-        src={playerSpriteSheet}
-        alt="player"
-        draggable={false}
-        style={{
-          imageRendering: 'pixelated',
-          transform: `scale(${scale})`,
-          transformOrigin: '0 0',
-          marginLeft: -col * frameW,
-          marginTop: -row * frameH,
-          display: 'block',
-        }}
-      />
-    </div>
+    />
   );
 };
 
