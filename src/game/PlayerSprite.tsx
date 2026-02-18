@@ -23,19 +23,16 @@ const DIRECTION_COL: Record<Direction, number> = {
   right: 3,
 };
 
-// Head: 1 column, 16 rows total (4 directions × 4 animation frames)
-// Rows 0-3: Back (up), Rows 4-7: Left, Rows 8-11: Front (down), Rows 12-15: Right
+// Head: 1 column, 16 rows total
+// Use only row 0 (costas/up), row 4 (esquerda/left), row 8 (frente/down), row 12 (direita/right)
 const HEAD_TOTAL_ROWS = 16;
-const HEAD_FRAMES_PER_DIR = 4;
 
-const HEAD_DIRECTION_START: Record<Direction, number> = {
+const HEAD_ROW: Record<Direction, number> = {
   up: 0,
   left: 4,
   down: 8,
   right: 12,
 };
-
-const HEAD_ROWS = 4; // not used anymore, kept for reference
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
   const [bodySheet, setBodySheet] = useState<{ w: number; h: number } | null>(null);
@@ -53,7 +50,7 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
 
   if (!bodySheet || !headSheet) return <div style={{ width: tileSize, height: tileSize }} />;
 
-  // Body frame calculations
+  // Body
   const bodyFrameW = bodySheet.w / BODY_COLS;
   const bodyFrameH = bodyFrameW;
   const col = DIRECTION_COL[direction];
@@ -61,12 +58,10 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
   const bodyScaleX = tileSize / bodyFrameW;
   const bodyScaleY = tileSize / bodyFrameH;
 
-  // Head frame calculations — single column, 16 rows (4 dirs × 4 frames)
+  // Head — single static frame per direction
   const headFrameW = headSheet.w;
   const headFrameH = headSheet.h / HEAD_TOTAL_ROWS;
-  const headStartRow = HEAD_DIRECTION_START[direction];
-  const headFrame = isMoving ? (stepFrame % HEAD_FRAMES_PER_DIR) : 0;
-  const headRow = headStartRow + headFrame;
+  const headRow = HEAD_ROW[direction];
   const headScaleX = tileSize / headFrameW;
   const headScaledDisplayH = headFrameH * headScaleX;
 
