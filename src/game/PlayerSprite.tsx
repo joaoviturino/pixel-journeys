@@ -23,14 +23,19 @@ const DIRECTION_COL: Record<Direction, number> = {
   right: 3,
 };
 
-// Head: 1 column x 4 rows
-// Row 0: Back (up), Row 1: Left, Row 2: Front (down), Row 3: Right
-const HEAD_DIRECTION_ROW: Record<Direction, number> = {
+// Head: 1 column, 16 rows total (4 directions × 4 animation frames)
+// Rows 0-3: Back (up), Rows 4-7: Left, Rows 8-11: Front (down), Rows 12-15: Right
+const HEAD_TOTAL_ROWS = 16;
+const HEAD_FRAMES_PER_DIR = 4;
+
+const HEAD_DIRECTION_START: Record<Direction, number> = {
   up: 0,
-  left: 1,
-  down: 2,
-  right: 3,
+  left: 4,
+  down: 8,
+  right: 12,
 };
+
+const HEAD_ROWS = 4; // not used anymore, kept for reference
 
 const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFrame, tileSize }) => {
   const [bodySheet, setBodySheet] = useState<{ w: number; h: number } | null>(null);
@@ -50,57 +55,59 @@ const PlayerSprite: React.FC<PlayerSpriteProps> = ({ direction, isMoving, stepFr
 
   // Body frame calculations
   const bodyFrameW = bodySheet.w / BODY_COLS;
-  const bodyFrameH = bodyFrameW; // Square frames
-  const bodyRows = Math.round(bodySheet.h / bodyFrameH);
-
+  const bodyFrameH = bodyFrameW;
   const col = DIRECTION_COL[direction];
   const row = isMoving ? (stepFrame % WALK_FRAMES) : 0;
+  const bodyScaleX = tileSize / bodyFrameW;
+  const bodyScaleY = tileSize / bodyFrameH;
 
-  const bodyScaledW = (bodySheet.w / bodyFrameW) * tileSize;
-  const bodyScaledH = (bodySheet.h / bodyFrameH) * tileSize;
+  // Head frame calculations — single column, 16 rows (4 dirs × 4 frames)
+  const headFrameW = headSheet.w;
+  const headFrameH = headSheet.h / HEAD_TOTAL_ROWS;
+  const headStartRow = HEAD_DIRECTION_START[direction];
+  const headFrame = isMoving ? (stepFrame % HEAD_FRAMES_PER_DIR) : 0;
+  const headRow = headStartRow + headFrame;
+  const headScaleX = tileSize / headFrameW;
+  const headScaledDisplayH = headFrameH * headScaleX;
 
-  // Head frame calculations (single column)
-  const headFrameW = headSheet.w; // 1 column
-  const headFrameH = headSheet.h / 4; // 4 rows
-  const headRow = HEAD_DIRECTION_ROW[direction];
-
-  // Scale head to match tile width
-  const headScale = tileSize / headFrameW;
-  const headScaledW = headSheet.w * headScale;
-  const headScaledH = headSheet.h * headScale;
-  const headDisplayH = headFrameH * headScale;
+  // Overlap: head sits partially over body
+  const overlap = headScaledDisplayH * 0.35;
 
   return (
-    <div style={{ position: 'relative', width: tileSize, height: tileSize * 1.5 }}>
-      {/* Head - positioned above body */}
+    <div style={{
+      position: 'relative',
+      width: tileSize,
+      height: headScaledDisplayH + tileSize - overlap,
+    }}>
+      {/* Head */}
       <div
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
           width: tileSize,
-          height: headDisplayH,
+          height: headScaledDisplayH,
           overflow: 'hidden',
           imageRendering: 'pixelated',
           backgroundImage: `url(${headSpriteSheet})`,
-          backgroundSize: `${headScaledW}px ${headScaledH}px`,
-          backgroundPosition: `0px -${headRow * headDisplayH}px`,
+          backgroundSize: `${tileSize}px ${headSheet.h * headScaleX}px`,
+          backgroundPosition: `0px -${headRow * headScaledDisplayH}px`,
           backgroundRepeat: 'no-repeat',
           zIndex: 2,
         }}
       />
-      {/* Body - below head */}
+      {/* Body */}
       <div
         style={{
           position: 'absolute',
-          top: headDisplayH * 0.5,
+          top: headScaledDisplayH - overlap,
           left: 0,
           width: tileSize,
           height: tileSize,
           overflow: 'hidden',
           imageRendering: 'pixelated',
           backgroundImage: `url(${playerSpriteSheet})`,
-          backgroundSize: `${bodyScaledW}px ${bodyScaledH}px`,
+          backgroundSize: `${bodySheet.w * bodyScaleX}px ${bodySheet.h * bodyScaleY}px`,
           backgroundPosition: `-${col * tileSize}px -${row * tileSize}px`,
           backgroundRepeat: 'no-repeat',
           zIndex: 1,
