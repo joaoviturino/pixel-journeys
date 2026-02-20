@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { api } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [nome_usuario, setNomeUsuario] = useState('');
+  const [senha, setSenha] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      // Since there's no login endpoint, we fetch all users and match
+      // This is a temporary approach — ideally the API should have a POST /api/login
+      const users = await api.getUsuarios();
+      const user = users.find(
+        u => u.nome_usuario === nome_usuario && u.senha === senha
+      );
+
+      if (!user) {
+        setError('Usuário ou senha incorretos');
+        return;
+      }
+
+      login(user);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao fazer login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-card p-6 rounded pixel-border">
+        <h1 className="text-primary text-center text-sm mb-6">NEW ERA</h1>
+        <h2 className="text-foreground text-center text-[10px] mb-6">LOGIN</h2>
+
+        {error && (
+          <div className="bg-destructive/20 border border-destructive text-destructive text-[8px] p-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-foreground text-[8px] block mb-1">Nome de Usuário</label>
+            <input
+              value={nome_usuario}
+              onChange={e => setNomeUsuario(e.target.value)}
+              required
+              className="w-full bg-muted text-foreground text-[8px] p-2 rounded border border-border focus:border-primary outline-none"
+              placeholder="Seu nome de usuário"
+            />
+          </div>
+
+          <div>
+            <label className="text-foreground text-[8px] block mb-1">Senha</label>
+            <input
+              type="password"
+              value={senha}
+              onChange={e => setSenha(e.target.value)}
+              required
+              className="w-full bg-muted text-foreground text-[8px] p-2 rounded border border-border focus:border-primary outline-none"
+              placeholder="Sua senha"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground text-[8px] p-3 rounded pixel-border hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {loading ? 'ENTRANDO...' : 'ENTRAR'}
+          </button>
+        </form>
+
+        <p className="text-muted-foreground text-[8px] text-center mt-4">
+          Não tem conta?{' '}
+          <Link to="/register" className="text-accent hover:underline">
+            Cadastrar
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
