@@ -5,7 +5,17 @@ export interface Usuario {
   nome_usuario: string;
   email: string;
   whatsapp: string;
-  senha: string;
+  senha?: string;
+}
+
+export interface LoginResponse {
+  message: string;
+  user: Usuario;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: Usuario;
 }
 
 export interface ApiError {
@@ -35,24 +45,26 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => request<{ status: string }>('/health'),
-
-  register: (data: Omit<Usuario, 'id'>) =>
-    request<Usuario>('/api/usuarios', {
+  register: (data: { nome_usuario: string; email: string; whatsapp: string; senha: string }) =>
+    request<RegisterResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  getUsuarios: () => request<Usuario[]>('/api/usuarios'),
-
-  getUsuario: (id: number) => request<Usuario>(`/api/usuarios/${id}`),
-
-  updateUsuario: (id: number, data: Partial<Usuario>) =>
-    request<Usuario>(`/api/usuarios/${id}`, {
-      method: 'PUT',
+  login: (data: { nome_usuario: string; senha: string }) =>
+    request<LoginResponse>('/auth/login', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  deleteUsuario: (id: number) =>
-    request<void>(`/api/usuarios/${id}`, { method: 'DELETE' }),
+  getUsers: (adminKey?: string) =>
+    request<Usuario[]>('/users', {
+      headers: adminKey ? { 'x-admin-key': adminKey } : undefined,
+    }),
+
+  deleteUser: (id: number, adminKey?: string) =>
+    request<void>(`/users/${id}`, {
+      method: 'DELETE',
+      headers: adminKey ? { 'x-admin-key': adminKey } : undefined,
+    }),
 };
