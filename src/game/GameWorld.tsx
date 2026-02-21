@@ -1,59 +1,57 @@
 import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MAP, MAP_WIDTH, MAP_HEIGHT } from './mapData';
 import TileRenderer from './TileRenderer';
 import PlayerSprite from './PlayerSprite';
+import RemotePlayerSprite from './RemotePlayerSprite';
 import MobileControls from './MobileControls';
 import { useGameEngine } from './useGameEngine';
+import { useMultiplayer } from './useMultiplayer';
+import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+const CHUNK_SIZE = 15; // 15x15 visible chunk
 
 const GameWorld: React.FC = () => {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { playerPos, direction, isMoving, stepFrame, handleTapMove, movePlayer } = useGameEngine();
+  const { remotePlayers } = useMultiplayer(playerPos, direction, isMoving, stepFrame);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Calculate tile size based on viewport
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/login');
+  }, [logout, navigate]);
+
+  // Calculate tile size to fit CHUNK_SIZE tiles in the viewport
   const tileSize = useMemo(() => {
     if (dimensions.width === 0) return 32;
-    // Show ~12 tiles across on mobile, ~18 on desktop
-    const tilesAcross = isMobile ? 10 : 16;
     const controlsHeight = isMobile ? 160 : 0;
     const availableHeight = dimensions.height - controlsHeight;
-    const fromWidth = Math.floor(dimensions.width / tilesAcross);
-    const fromHeight = Math.floor(availableHeight / (isMobile ? 14 : 12));
-    return Math.max(16, Math.min(fromWidth, fromHeight, 48));
+    const fromWidth = Math.floor(dimensions.width / CHUNK_SIZE);
+    const fromHeight = Math.floor(availableHeight / CHUNK_SIZE);
+    return Math.max(16, Math.min(fromWidth, fromHeight, 64));
   }, [dimensions, isMobile]);
 
-  // Viewport tiles
-  const viewportTilesX = useMemo(() => Math.ceil(dimensions.width / tileSize) + 2, [dimensions.width, tileSize]);
-  const viewportTilesY = useMemo(() => {
-    const controlsHeight = isMobile ? 160 : 0;
-    return Math.ceil((dimensions.height - controlsHeight) / tileSize) + 2;
-  }, [dimensions.height, tileSize, isMobile]);
-
-  // Camera offset (center on player)
+  // Camera offset (center on player, clamped)
   const cameraX = useMemo(() => {
-    const centerOffset = Math.floor(viewportTilesX / 2);
-    let cx = playerPos.x - centerOffset;
-    cx = Math.max(0, Math.min(cx, MAP_WIDTH - viewportTilesX));
-    return cx;
-  }, [playerPos.x, viewportTilesX]);
+    const half = Math.floor(CHUNK_SIZE / 2);
+    return Math.max(0, Math.min(playerPos.x - half, MAP_WIDTH - CHUNK_SIZE));
+  }, [playerPos.x]);
 
   const cameraY = useMemo(() => {
-    const centerOffset = Math.floor(viewportTilesY / 2);
-    let cy = playerPos.y - centerOffset;
-    cy = Math.max(0, Math.min(cy, MAP_HEIGHT - viewportTilesY));
-    return cy;
-  }, [playerPos.y, viewportTilesY]);
+    const half = Math.floor(CHUNK_SIZE / 2);
+    return Math.max(0, Math.min(playerPos.y - half, MAP_HEIGHT - CHUNK_SIZE));
+  }, [playerPos.y]);
 
   // Resize observer
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        setDimensions({
-          width: window.innerWidth,
-          height: window.innerHeight,
-        });
+        setDimensions({ width: window.innerWidth, height: window.innerHeight });
       }
     };
     updateSize();
@@ -77,11 +75,8 @@ const GameWorld: React.FC = () => {
       }
 
       const rect = container.getBoundingClientRect();
-      const relX = clientX - rect.left;
-      const relY = clientY - rect.top;
-
-      const tileX = Math.floor(relX / tileSize) + cameraX;
-      const tileY = Math.floor(relY / tileSize) + cameraY;
+      const tileX = Math.floor((clientX - rect.left) / tileSize) + cameraX;
+      const tileY = Math.floor((clientY - rect.top) / tileSize) + cameraY;
 
       if (tileX >= 0 && tileX < MAP_WIDTH && tileY >= 0 && tileY < MAP_HEIGHT) {
         handleTapMove(tileX, tileY);
@@ -90,16 +85,14 @@ const GameWorld: React.FC = () => {
     [tileSize, cameraX, cameraY, handleTapMove]
   );
 
-  // Render visible tiles
+  // Render visible 15x15 chunk
   const visibleTiles = useMemo(() => {
     const tiles: React.ReactNode[] = [];
-    const startX = Math.max(0, cameraX);
-    const endX = Math.min(MAP_WIDTH, cameraX + viewportTilesX);
-    const startY = Math.max(0, cameraY);
-    const endY = Math.min(MAP_HEIGHT, cameraY + viewportTilesY);
+    const endX = Math.min(MAP_WIDTH, cameraX + CHUNK_SIZE);
+    const endY = Math.min(MAP_HEIGHT, cameraY + CHUNK_SIZE);
 
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
+    for (let y = cameraY; y < endY; y++) {
+      for (let x = cameraX; x < endX; x++) {
         tiles.push(
           <div
             key={`${x}-${y}`}
@@ -117,7 +110,7 @@ const GameWorld: React.FC = () => {
       }
     }
     return tiles;
-  }, [cameraX, cameraY, viewportTilesX, viewportTilesY, tileSize]);
+  }, [cameraX, cameraY, tileSize]);
 
   const controlsHeight = isMobile ? 160 : 0;
   const mapHeight = dimensions.height - controlsHeight;
@@ -135,7 +128,7 @@ const GameWorld: React.FC = () => {
         {/* Tiles */}
         {visibleTiles}
 
-        {/* Player */}
+        {/* Local Player */}
         <div
           style={{
             position: 'absolute',
@@ -144,7 +137,7 @@ const GameWorld: React.FC = () => {
             width: tileSize,
             height: tileSize,
             zIndex: 10,
-            transition: `left ${100}ms linear, top ${100}ms linear`,
+            transition: 'left 100ms linear, top 100ms linear',
           }}
         >
           <PlayerSprite
@@ -155,11 +148,41 @@ const GameWorld: React.FC = () => {
           />
         </div>
 
+        {/* Remote Players */}
+        {remotePlayers.map(rp => (
+          <RemotePlayerSprite
+            key={rp.id}
+            player={rp}
+            tileSize={tileSize}
+            cameraX={cameraX}
+            cameraY={cameraY}
+          />
+        ))}
+
         {/* HUD */}
-        <div className="absolute top-2 left-2 z-20 bg-card/80 px-3 py-1 rounded pixel-border">
-          <span className="text-foreground text-[8px] font-pixel">
-            {isMobile ? 'Toque para mover' : 'WASD para mover'}
+        <div className="absolute top-2 left-2 z-20 bg-card/80 px-3 py-2 rounded pixel-border flex items-center gap-3">
+          <span className="text-primary text-[7px] font-pixel">
+            {user?.name || 'Jogador'}
           </span>
+          <span className="text-muted-foreground text-[6px]">|</span>
+          <span className="text-muted-foreground text-[6px] font-pixel">
+            {isMobile ? 'Toque para mover' : 'WASD'}
+          </span>
+        </div>
+
+        {/* Online count + Logout */}
+        <div className="absolute top-2 right-2 z-20 flex gap-2">
+          <div className="bg-card/80 px-3 py-2 rounded pixel-border">
+            <span className="text-accent text-[6px] font-pixel">
+              🟢 {remotePlayers.length + 1} online
+            </span>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+            className="bg-destructive/80 text-destructive-foreground text-[6px] font-pixel px-3 py-2 rounded pixel-border hover:bg-destructive transition-colors"
+          >
+            SAIR
+          </button>
         </div>
       </div>
 
