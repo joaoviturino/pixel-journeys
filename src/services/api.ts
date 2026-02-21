@@ -2,20 +2,21 @@ const API_BASE = 'https://bd-newera.gratianweb.site';
 
 export interface Usuario {
   id?: number;
-  nome_usuario: string;
+  name: string;
   email: string;
-  whatsapp: string;
-  senha?: string;
+  whatsapp?: string;
+  role?: string;
 }
 
-export interface LoginResponse {
-  message: string;
+export interface AuthResponse {
+  token: string;
   user: Usuario;
 }
 
-export interface RegisterResponse {
-  message: string;
-  user: Usuario;
+export interface Character {
+  id?: number;
+  name?: string;
+  [key: string]: any;
 }
 
 export interface ApiError {
@@ -23,13 +24,28 @@ export interface ApiError {
   status: number;
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+function getToken(): string | null {
+  const stored = localStorage.getItem('newera_token');
+  return stored;
+}
+
+async function request<T>(path: string, options?: RequestInit & { auth?: boolean }): Promise<T> {
+  const { auth, ...fetchOptions } = options || {};
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(fetchOptions.headers as Record<string, string>),
+  };
+
+  if (auth) {
+    const token = getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    ...fetchOptions,
+    headers,
   });
 
   if (!res.ok) {
@@ -45,26 +61,52 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  register: (data: { nome_usuario: string; email: string; whatsapp: string; senha: string }) =>
-    request<RegisterResponse>('/auth/register', {
+  // Auth
+  register: (data: { name: string; email: string; password: string; role?: string; whatsapp?: string }) =>
+    request<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  login: (data: { nome_usuario: string; senha: string }) =>
-    request<LoginResponse>('/auth/login', {
+  login: (data: { email: string; password: string }) =>
+    request<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  getUsers: (adminKey?: string) =>
-    request<Usuario[]>('/users', {
-      headers: adminKey ? { 'x-admin-key': adminKey } : undefined,
+  // Characters
+  getCharacters: () =>
+    request<Character[]>('/characters', { auth: true }),
+
+  createCharacter: (data: Record<string, any>) =>
+    request<Character>('/characters', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      auth: true,
     }),
 
-  deleteUser: (id: number, adminKey?: string) =>
-    request<void>(`/users/${id}`, {
-      method: 'DELETE',
-      headers: adminKey ? { 'x-admin-key': adminKey } : undefined,
+  getCharacter: (id: number) =>
+    request<Character>(`/characters/${id}`, { auth: true }),
+
+  // Decks
+  createDeck: (data: Record<string, any>) =>
+    request<any>('/decks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      auth: true,
     }),
+
+  getDecks: (characterId: number) =>
+    request<any[]>(`/decks/${characterId}`, { auth: true }),
+
+  addCardToDeck: (deckId: number, data: Record<string, any>) =>
+    request<any>(`/decks/${deckId}/add-card`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      auth: true,
+    }),
+
+  // Inventory
+  getInventory: (characterId: number) =>
+    request<any>(`/inventory/${characterId}`, { auth: true }),
 };
