@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [nome_usuario, setNomeUsuario] = useState('');
-  const [senha, setSenha] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,11 +17,11 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.login({ nome_usuario, senha });
-      login(res.user);
+      const res = await api.login({ email, password });
+      login(res.user, res.token);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Usuário ou senha incorretos');
+      setError(err.message || 'Email ou senha incorretos');
     } finally {
       setLoading(false);
     }
@@ -41,13 +41,14 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-foreground text-[8px] block mb-1">Nome de Usuário</label>
+            <label className="text-foreground text-[8px] block mb-1">Email</label>
             <input
-              value={nome_usuario}
-              onChange={e => setNomeUsuario(e.target.value)}
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
               className="w-full bg-muted text-foreground text-[8px] p-2 rounded border border-border focus:border-primary outline-none"
-              placeholder="Seu nome de usuário"
+              placeholder="seu@email.com"
             />
           </div>
 
@@ -55,8 +56,8 @@ const Login: React.FC = () => {
             <label className="text-foreground text-[8px] block mb-1">Senha</label>
             <input
               type="password"
-              value={senha}
-              onChange={e => setSenha(e.target.value)}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               required
               className="w-full bg-muted text-foreground text-[8px] p-2 rounded border border-border focus:border-primary outline-none"
               placeholder="Sua senha"

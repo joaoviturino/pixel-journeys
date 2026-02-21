@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { Usuario } from '@/services/api';
 
 interface AuthContextType {
   user: Usuario | null;
-  login: (user: Usuario) => void;
+  token: string | null;
+  login: (user: Usuario, token: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -16,18 +17,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = useCallback((userData: Usuario) => {
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('newera_token');
+  });
+
+  const login = useCallback((userData: Usuario, jwt: string) => {
     setUser(userData);
+    setToken(jwt);
     localStorage.setItem('newera_user', JSON.stringify(userData));
+    localStorage.setItem('newera_token', jwt);
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('newera_user');
+    localStorage.removeItem('newera_token');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user && !!token }}>
       {children}
     </AuthContext.Provider>
   );
