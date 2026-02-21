@@ -17,22 +17,11 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // Since there's no login endpoint, we fetch all users and match
-      // This is a temporary approach — ideally the API should have a POST /api/login
-      const users = await api.getUsuarios();
-      const user = users.find(
-        u => u.nome_usuario === nome_usuario && u.senha === senha
-      );
-
-      if (!user) {
-        setError('Usuário ou senha incorretos');
-        return;
-      }
-
-      login(user);
+      const res = await api.login({ nome_usuario, senha });
+      login(res.user);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      setError(err.message || 'Usuário ou senha incorretos');
     } finally {
       setLoading(false);
     }

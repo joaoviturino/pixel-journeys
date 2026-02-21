@@ -35,8 +35,8 @@ const Register: React.FC = () => {
 
     setLoading(true);
     try {
-      const user = await api.register(form);
-      login(user);
+      const res = await api.register(form);
+      login(res.user);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar');
